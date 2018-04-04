@@ -1,0 +1,9 @@
+## .gitignore for boxninja
+
+# config file with user settings
+.boxsettings
+*.boxsettings
+
+# compiled python
+*.pyc
+
