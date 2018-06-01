@@ -76,15 +76,21 @@ def logout():
     return 'You are now logged out of your Box account.'
 
 @app.route('/box-token')
-@requires_auth
 def box_token():
     res = get_box_folder(0)
     page_output = {
         'access_token': session['oauth_credentials']['access_token'],
         'payload': res.json()
     }
-    print(page_output['access_token'])
-    return jsonify(page_output)
+    print(session['oauth_credentials'])
+    expirancy = int(session['oauth_credentials']['expires_in'])
+    with open('token', 'w') as tf:
+        tf.write(session['oauth_credentials']['access_token'])
+
+    output = jsonify(page_output)
+    output.headers.add('Refresh', '{};url=http://127.0.0.1:5000/box-token'.format(expirancy - 10))
+    print(output.headers)
+    return output
 
 
 # OAuth 2 Methods
