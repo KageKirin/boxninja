@@ -2,6 +2,7 @@
 
 import sys
 import os
+import time
 
 sys.path.append("boxhelper")
 from boxhelper import config
@@ -21,23 +22,34 @@ from pathlib import Path
 from oauth_helper import refresh_token_from_proxyfile
 
 def boxgetfile(depsfile, outfile, client):
-    boxid = depsfile.stem
-    item = client.file(boxid)
-    info = item.get()
+    fileok = False
+    while not fileok:
+        try:
+            boxid = depsfile.stem
+            item = client.file(boxid)
+            info = item.get()
 
-    if outfile.exists():
-        # check for overwrite
-        if outfile.stat().st_size == info.size:
-            with codecs.open(depsfile, mode='r', encoding='utf-8') as df:
-                boxhash = df.readlines()[2]
-                with open(outfile, mode='rb') as of:
-                    filehash = sha1(of.read()).hexdigest()
-                    if boxhash == filehash:
-                        print("file already fully downloaded. we're good.")
-                        return
+            if outfile.exists():
+                # check for overwrite
+                if outfile.stat().st_size == info.size:
+                    with codecs.open(depsfile, mode='r', encoding='utf-8') as df:
+                        boxhash = df.readlines()[2]
+                        with open(outfile, mode='rb') as of:
+                            filehash = sha1(of.read()).hexdigest()
+                            if boxhash == filehash:
+                                print("file already fully downloaded. we're good.")
+                                return
 
-    with open(outfile, 'wb') as of:
-        of.write(info.content())
+            with open(outfile, 'wb') as of:
+                of.write(info.content())
+                fileok = True
+        except requests.exceptions.ContentDecodingError:
+            print('requests.exceptions.ContentDecodingError', 'trying again')
+            time.sleep(10)
+        except requests.exceptions.ConnectionError:
+            print('requests.exceptions.ConnectionError', 'trying again')
+            time.sleep(60)
+
 
 
 def main(args):
@@ -64,8 +76,10 @@ def main(args):
         except BoxOAuthException:
             access_token = refresh_token_from_proxyfile()
             print('retrying with new token:', access_token)
+            time.sleep(60)
         except BoxAPIException:
             print('box API exception')
+            time.sleep(60)
 
 
 
