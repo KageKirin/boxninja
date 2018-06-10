@@ -34,34 +34,46 @@ logger.setLevel(logging.DEBUG)
 
 def recurse_boxfolders(foldermap, nj, nj_getfile, nj_checkfile, args, settings, client, ninjafilepath):
     print(foldermap)
+    file_items = []
     for path, folderid in foldermap:
         #print(path, folderid)
         connectionOk = False
         while not connectionOk:
             try:
                 folder = client.folder(folderid)
-                for item in folder.get_items(offset=0, limit=1000):
-                    logger.info(str(item))
-                    sys.stdout.flush()
+                items = folder.get_items(offset=0, limit=10000)
 
-                    if item.type == 'folder':
-                        foldermap.append([path.joinpath(item.name), item.id])
-                    elif item.type == 'file':
-                        itempath = path.joinpath(item.name)
-                        item_depspath = args.output_folder.joinpath(args.deps_folder, item.id)
-                        item_temppath = args.output_folder.joinpath(args.temp_folder, item.id).with_suffix('.data')
+                box_folder_items = list(filter(lambda x: x.type == 'folder', items))
+                #print(box_folder_items)
+                folder_elems = list(map(lambda x: [path.joinpath(x.name), x.id], box_folder_items))
+                foldermap.extend(folder_elems)
 
-                        with codecs.open(item_depspath, 'w', 'utf-8') as depsfile:
-                            depsfile.writelines("\n".join([item.id, str(itempath), item.sha1]))
-                        local_depspath = item_depspath.resolve().relative_to(ninjafilepath.parent)
-                        local_temppath = item_temppath.resolve().relative_to(ninjafilepath.parent)
-                        local_itempath = itempath.resolve().relative_to(ninjafilepath.parent)
-                        ninpo.create_target(nj, nj_getfile, str(local_depspath), str(local_temppath))
-                        ninpo.create_target(nj, nj_checkfile, [str(local_depspath), str(local_temppath)], str(local_itempath))
-                    connectionOk = True
+                box_file_items = list(filter(lambda x: x.type == 'file', items))
+                more_file_items = list(map(lambda x: {'path': path.joinpath(x.name), 'id': x.id, 'sha1':x.sha1}, box_file_items))
+                file_items.extend(more_file_items)
+                print(len(foldermap), len(file_items))
+                connectionOk = True
+
             except BoxOAuthException:
                 access_token = refresh_token_from_proxyfile()
-                client = make_connection(settings, access_token)
+                client, token = make_connection(settings, access_token)
+
+    print(len(file_items))
+    for item in file_items:
+        print(file_items.index(item), '/', len(file_items), item)
+        #logger.info(str(item))
+        #sys.stdout.flush()
+
+        item_depspath = args.output_folder.joinpath(args.deps_folder, item['id'])
+        item_temppath = args.output_folder.joinpath(args.temp_folder, item['id']).with_suffix('.data')
+
+        with codecs.open(item_depspath, 'w', 'utf-8') as depsfile:
+            depsfile.writelines("\n".join([item['id'], str(item['path']), item['sha1']]))
+        local_depspath = item_depspath.resolve().relative_to(ninjafilepath.parent)
+        local_temppath = item_temppath.resolve().relative_to(ninjafilepath.parent)
+        local_itempath = item['path'].resolve().relative_to(ninjafilepath.parent)
+        ninpo.create_target(nj, nj_getfile, str(local_depspath), str(local_temppath))
+        ninpo.create_target(nj, nj_checkfile, [str(local_depspath), str(local_temppath)], str(local_itempath))
 
 
 
