@@ -15,19 +15,26 @@ from boxsdk import Client, DevelopmentClient, DeveloperTokenClient
 from boxsdk.network.logging_network import LoggingNetwork
 from boxsdk.exception import BoxAPIException
 
+import logging
 import codecs
 import argparse
 from pathlib import Path
 
+ch = logging.StreamHandler()
+formatter = logging.Formatter('\x1b[80D\x1b[1A\x1b[K%(message)s')
+ch.setFormatter(formatter)
+logger = logging.getLogger('')
+logger.addHandler(ch)
+logger.setLevel(logging.DEBUG)
 
 def recurse_boxfolders(foldermap, nj, nj_getfile, nj_checkfile, args, client, ninjafilepath):
     print(foldermap)
     for path, folderid in foldermap:
-        print(path, folderid)
+        #print(path, folderid)
         folder = client.folder(folderid)
         for item in folder.get_items(offset=0, limit=1000):
-            print(item)
-            print(item.type)
+            logger.info(str(item))
+            sys.stdout.flush()
 
             if item.type == 'folder':
                 foldermap.append([path.joinpath(item.name), item.id])
@@ -66,7 +73,7 @@ def main(args):
         client_id = settings['client_id'],
         client_secret = settings['client_secret'],
         access_token = settings['access_token'])
-    client = DeveloperTokenClient(oauth)
+    client = Client(oauth)
     my = client.user(user_id='me').get()
     #print(my)
 
