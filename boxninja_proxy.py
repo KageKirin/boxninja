@@ -40,7 +40,16 @@ def box_folder(folder_id):
         'access_token': session['oauth_credentials']['access_token'],
         'api_response': api_response.json()
     }
-    return jsonify(page_output)
+    with open('token', 'w') as tf:
+        tf.write(session['oauth_credentials']['access_token'])
+
+    output = jsonify(page_output)
+    expirancy = int(session['oauth_credentials']['expires_in'])
+    print('token expires in', expirancy)
+    #output.headers.add('Refresh', '{0};url=http://localhost:5000/box-folder/{1}'.format(expirancy, folder_id))
+    print(output.headers)
+    return output
+
 
 @app.route('/box-file/<file_id>')
 @requires_auth
@@ -84,11 +93,12 @@ def box_token():
     }
     print(session['oauth_credentials'])
     expirancy = int(session['oauth_credentials']['expires_in'])
+    print('token expires in', expirancy)
     with open('token', 'w') as tf:
         tf.write(session['oauth_credentials']['access_token'])
 
     output = jsonify(page_output)
-    output.headers.add('Refresh', '{};url=http://127.0.0.1:5000/box-token'.format(expirancy - 10))
+    output.headers.add('Refresh', '{};url=http://localhost:5000/box-token'.format(expirancy))
     print(output.headers)
     return output
 
